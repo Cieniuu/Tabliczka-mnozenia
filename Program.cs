@@ -14,7 +14,6 @@ public enum Game_Field_Type
 	Number,
 	Wall
 };
-
 	
 public class Game_clock
 {
@@ -22,12 +21,10 @@ public class Game_clock
 	public int target_fps;
     private UInt64 cpu_tick_frequency;
 
-	
     public Game_clock()
 	{
 		cpu_tick_frequency = SDL.SDL_GetPerformanceFrequency();
 	}
-
 
 	public void clock_update_and_wait(System.UInt64 tick_start)
 	{
@@ -89,6 +86,7 @@ public struct Number
 	public int value;
     public Game_Field_Type type;
 }
+
 public class Game_state
 {
 	public Game_clock Clock { get; private set; }
@@ -113,7 +111,6 @@ public class Game_state
 	{
 		Play_field = new Game_Field_Type[max_play_field_size, max_play_field_size];
 		Play_field_size = max_play_field_size;
-
 
 		Clock = new Game_clock();
         rand = new Random();
@@ -223,6 +220,13 @@ public class RenderContext
 	}
 }
 
+enum Button_ID
+{
+    None,
+    Play,
+    Quit
+}
+
 public class Game
 {
 	public Game_state State { get; private set; }
@@ -230,27 +234,31 @@ public class Game
     int tile_size;
     bool has_move_key_changed;
 	
-
     RenderContext renderer;
+    int window_size;
 	readonly IntPtr texture_atlas;
 	SDL.SDL_Rect tile_rect;
 	SDL.SDL_Rect texture_rect;
+    int render_gameplay_offset;
+    Button_ID active_button;
 
 	public Game()
 	{
-		renderer = new RenderContext(900, 900);
+        window_size = 915;
+		renderer = new RenderContext(window_size, window_size);
 		player = new Player();
-        State = new Game_state(20);
+        State = new Game_state(15);
         State.Clock.target_fps = 60;
 		has_move_key_changed = false;
+        render_gameplay_offset = 128;
         texture_atlas = renderer.Texture_load("../../../textures/tabliczka_atlas.png");
+        active_button = Button_ID.None;
 		Gameplay_setup();
 
-		tile_size = renderer.Window.Width / State.Play_field_size;
+		tile_size = (renderer.Window.Width - render_gameplay_offset) / State.Play_field_size;
 		tile_rect = new SDL.SDL_Rect { w = tile_size, h = tile_size };
 		texture_rect = new SDL.SDL_Rect { w = 64, h = 64 };
     }
-
     public void Gameplay_setup()
     {
         player.body.x = 7;
@@ -280,17 +288,15 @@ public class Game
 		uint buttons = SDL.SDL_GetMouseState(out int mouse_x, out int mouse_y);
 		if ((buttons & SDL.SDL_BUTTON_LMASK) != 0)
 		{
-			int tile_size = renderer.Window.Width / State.Play_field_size;
-			int tile_x = mouse_x / tile_size;
-			int tile_y = mouse_y / tile_size;
+			int tile_x = Get_Tile_Pos(mouse_x);
+			int tile_y = Get_Tile_Pos(mouse_y);
 			State.Play_field[tile_y, tile_x] = Game_Field_Type.Wall;
 		}
 		if ((buttons & SDL.SDL_BUTTON_RMASK) != 0)
 		{
-			int tile_size = renderer.Window.Width / State.Play_field_size;
-			int tile_x = mouse_x / tile_size;
-			int tile_y = mouse_y / tile_size;
-			State.Play_field[tile_y, tile_x] = Game_Field_Type.Grass;
+			int tile_x = Get_Tile_Pos(mouse_x);
+			int tile_y = Get_Tile_Pos(mouse_y);
+            State.Play_field[tile_y, tile_x] = Game_Field_Type.Grass;
 		}
 
 		// Keyboard input
@@ -362,7 +368,6 @@ public class Game
         int bodyX = (int)player.body.x;
         int bodyY = (int)player.body.y;
 
-
         //kolizja z koncem mapy
         if (bodyX < 0 || bodyX >= State.Play_field_size)
         {
@@ -413,17 +418,16 @@ public class Game
 
     public void Render()
 	{
-		SDL.SDL_SetRenderDrawColor(renderer.Ctx, 0, 0, 0, 255);
+		SDL.SDL_SetRenderDrawColor(renderer.Ctx, 102, 0, 204, 255);
 		SDL.SDL_RenderClear(renderer.Ctx);
-
 
         // Grass and wall back-filling
         for (int y = 0; y < State.Play_field_size; y++)
         {
             for (int x = 0; x < State.Play_field_size; x++)
             {
-                tile_rect.x = x * tile_size;
-                tile_rect.y = y * tile_size;
+                tile_rect.x = Get_Render_Pos(x);
+                tile_rect.y = Get_Render_Pos(y);
 
                 texture_rect.x = 64;
                 texture_rect.y = 128;
@@ -442,8 +446,8 @@ public class Game
         // number render
         foreach (ref Number number in State.numbers.AsSpan())
         {
-            tile_rect.x = number.x * tile_size;
-            tile_rect.y = number.y * tile_size;
+            tile_rect.x = Get_Render_Pos(number.x);
+            tile_rect.y = Get_Render_Pos(number.y);
 
             if (number.type == Game_Field_Type.Grass)
             {
@@ -507,20 +511,55 @@ public class Game
             SDL.SDL_RenderCopy(renderer.Ctx, texture_atlas, ref texture_rect, ref tile_rect);
         }
 
+        // Player rendering
+        tile_rect.x = Get_Render_Pos((int)player.body.x);
+		tile_rect.y = Get_Render_Pos((int)player.body.y);
+
+		Position body_dir = new Position { x = player.vel_x, y = player.vel_y };
+
+		if ((int)body_dir.x == 1 && (int)body_dir.y == 0)
+        {
+            texture_rect.x = 64*2;
+            texture_rect.y = 192;
+        }
+        else if ((int)body_dir.x == -1 && (int)body_dir.y == 0)
+        {
+            texture_rect.x = 64*3;
+            texture_rect.y = 192;
+        }
+        else if ((int)body_dir.x == 0 && (int)body_dir.y == 1)
+        {
+            texture_rect.x = 64*0;
+            texture_rect.y = 192;
+        }
+        else if ((int)body_dir.x == 0 && (int)body_dir.y == -1)
+        {
+            texture_rect.x = 64*1;
+            texture_rect.y = 192;
+        }
+		else
+        {
+			texture_rect.x = 64*0;
+			texture_rect.y = 192;
+		}
+        SDL.SDL_RenderCopy(renderer.Ctx, texture_atlas, ref texture_rect, ref tile_rect);
+
+        // UI rendering
+
         //expected number render
         int num = State.expected_product;
         Span<int> digits = stackalloc int[3];
         int numer_of_digits = num == 0 ? 1 : (num > 0 ? 1 : 2) + (int)Math.Log10(Math.Abs((double)num));
-        tile_rect.x = 418 - (numer_of_digits - 1) * 32;
-        tile_rect.y = 0;
+        tile_rect.x = window_size / 2 - (numer_of_digits - 1) * (texture_rect.w / 2);
+        tile_rect.y = 5;
 
-        for(int i = 0; i < numer_of_digits; i++)
+        for (int i = 0; i < numer_of_digits; i++)
         {
             digits[i] = num % 10;
             num = num / 10;
-        } 
+        }
 
-		for (int i = numer_of_digits -1; i >= 0; i--)
+        for (int i = numer_of_digits - 1; i >= 0; i--)
         {
             if (digits[i] == 1)
             {
@@ -573,53 +612,88 @@ public class Game
                 texture_rect.y = 64 * 1;
             }
             SDL.SDL_RenderCopy(renderer.Ctx, texture_atlas, ref texture_rect, ref tile_rect);
-            tile_rect.x += 32;
+            tile_rect.x += 37;
         }
 
-        // Player rendering
-        tile_rect.x = (int)player.body.x * tile_size;
-		tile_rect.y = (int)player.body.y * tile_size;
+        // Render buttons
+        SDL.SDL_Rect button_rect = new SDL.SDL_Rect
+        {
+            x = window_size / 2 - texture_rect.w * 4,
+            y = window_size - 86,
+            w = texture_rect.w * 4,
+            h = 100
+        };
 
-		Position body_dir = new Position { x = player.vel_x, y = player.vel_y };
+        SDL.SDL_Rect button_texture = new SDL.SDL_Rect { x = 64 * 0, y = 64 * 4, w = 4 * 64, h = 2 * 64 };
+        Button(Button_ID.Quit, button_rect, button_texture);
+        if (active_button == Button_ID.Quit)
+        {
+            button_texture.x = 64 * 4;
+            Button(Button_ID.Quit, button_rect, button_texture);
+            if (Button(Button_ID.Quit, button_rect, button_texture))
+            {
+                button_texture.x = 64 * 8;
+                Button(Button_ID.Quit, button_rect, button_texture);
+            }
+        }
 
-		if ((int)body_dir.x == 1 && (int)body_dir.y == 0)
+        button_texture.x = 0;
+        button_texture.y = 64 * 6;
+        button_rect.x += button_rect.w;
+        Button(Button_ID.Play, button_rect, button_texture);
+        if (active_button == Button_ID.Play)
         {
-            texture_rect.x = 64*2;
-            texture_rect.y = 192;
+            button_texture.x = 64 * 4;
+            if ( Button(Button_ID.Play, button_rect, button_texture) )
+            {
+                button_texture.x = 64 * 8;
+                Button(Button_ID.Play, button_rect, button_texture);
+            }
         }
-        else if ((int)body_dir.x == -1 && (int)body_dir.y == 0)
-        {
-            texture_rect.x = 64*3;
-            texture_rect.y = 192;
-        }
-        else if ((int)body_dir.x == 0 && (int)body_dir.y == 1)
-        {
-            texture_rect.x = 64*0;
-            texture_rect.y = 192;
-        }
-        else if ((int)body_dir.x == 0 && (int)body_dir.y == -1)
-        {
-            texture_rect.x = 64*1;
-            texture_rect.y = 192;
-        }
-		else
-        {
-			texture_rect.x = 64*0;
-			texture_rect.y = 192;
-		}
-        SDL.SDL_RenderCopy(renderer.Ctx, texture_atlas, ref texture_rect, ref tile_rect);
 
-		SDL.SDL_RenderPresent(renderer.Ctx);
+        SDL.SDL_RenderPresent(renderer.Ctx);
 	}
 
-	public void terminate_SDL()
+    // Renders button at given tiles, sets status and returns true if clicked
+    private bool Button(Button_ID id, SDL.SDL_Rect rect, SDL.SDL_Rect texture)
+    {
+        SDL.SDL_RenderCopy(renderer.Ctx, texture_atlas, ref texture, ref rect);
+        uint mouse = SDL.SDL_GetMouseState(out int mouse_x, out int mouse_y);
+        SDL.SDL_Point cursor = new SDL.SDL_Point { x = mouse_x, y = mouse_y };
+   
+        if (SDL.SDL_PointInRect(ref cursor, ref rect) == SDL.SDL_bool.SDL_TRUE)
+        {
+            // button hilighted
+            active_button = id;
+               
+            if ( (mouse & SDL.SDL_BUTTON_LMASK) != 0)
+            {
+                // button clicked
+                return true;
+            }
+        }
+        else
+            active_button = Button_ID.None;
+        return false;
+    }
+
+	public void Terminate_SDL()
 	{
 		SDL.SDL_DestroyRenderer(renderer.Ctx);
 		SDL.SDL_DestroyWindow(renderer.Window.Window_handle);
 		SDL.SDL_Quit();
 	}
-}
+    private int Get_Render_Pos(int dpos)
+    {
+        return dpos * tile_size + (render_gameplay_offset / 2);
+    }
 
+    //TODO: Better out of gameplayfield bounds checking/notification
+    private int Get_Tile_Pos(int pixel_pos)
+    {
+        return Math.Clamp( (pixel_pos - render_gameplay_offset / 2) / tile_size, 0, State.Play_field_size - 1);
+    }
+}
 		
 class Program
 {
@@ -650,6 +724,6 @@ class Program
 			game.Render();
 			game.State.Clock.clock_update_and_wait(tick_start);
 		}
-		game.terminate_SDL();
+		game.Terminate_SDL();
 	}
 }
