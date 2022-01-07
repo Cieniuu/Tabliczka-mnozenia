@@ -26,23 +26,23 @@ public class Game_clock
 		cpu_tick_frequency = SDL.SDL_GetPerformanceFrequency();
 	}
 
-	public void clock_update_and_wait(System.UInt64 tick_start)
+	public void Clock_Update_And_Wait(System.UInt64 tick_start)
 	{
-		double time_work_s = get_seconds_elapsed_here(tick_start);
+		double time_work_s = Get_Elapsed_Seconds_Here(tick_start);
         double target_s = 1.0 / (double)target_fps;
         double time_to_wait_s = target_s - time_work_s;
 
 		if (time_to_wait_s > 0 && time_to_wait_s < target_s)
 		{
 			SDL.SDL_Delay((System.UInt32)(time_to_wait_s * 1000));
-			time_to_wait_s = get_seconds_elapsed_here(tick_start);
+			time_to_wait_s = Get_Elapsed_Seconds_Here(tick_start);
 			while (time_to_wait_s < target_s)
-				time_to_wait_s = get_seconds_elapsed_here(tick_start);
+				time_to_wait_s = Get_Elapsed_Seconds_Here(tick_start);
 		}
 
-		delta_time_s = (float)get_seconds_elapsed_here(tick_start);
+		delta_time_s = (float)Get_Elapsed_Seconds_Here(tick_start);
 	}
-	public double get_seconds_elapsed_here(System.UInt64 end)
+	public double Get_Elapsed_Seconds_Here(System.UInt64 end)
 	{
 		return (double)(SDL.SDL_GetPerformanceCounter() - end) / cpu_tick_frequency;
 	}
@@ -52,7 +52,6 @@ public class Game_window
 	public System.IntPtr Window_handle { get; private set; }
 	public int Width { get; private set; }
 	public int Height { get; private set; }
-
 	
 	public Game_window(int w, int h)
 	{
@@ -104,7 +103,6 @@ public class Game_state
 	public int score;
 
     public int Play_field_size { get; private set; }
-
 	public Random rand;
 
 	public Game_state(int max_play_field_size)
@@ -133,7 +131,7 @@ public class Game_state
         }
     }
 
-	public void Spawn_numbers()
+	public void Spawn_Numbers()
     {
         foreach (ref Number number in numbers.AsSpan())
         {
@@ -142,7 +140,7 @@ public class Game_state
         }
     }
 
-    public void Reset_field_except_walls()
+    public void Reset_Field_Except_Walls()
     {
         for (int y = 0; y < Play_field_size; y++)
         {
@@ -162,6 +160,12 @@ public struct Position
 {
 	public float x;
 	public float y;
+}
+
+public struct Tile_position
+{
+    public int x;
+    public int y;
 }
 
 public class Player
@@ -187,13 +191,13 @@ public class Player
     }
 }
 
-public class RenderContext
+public class Render_context
 {
 	public Game_window Window { get; private set; }
     public System.IntPtr Ctx { get; private set; }
 
 
-    public RenderContext(int w, int h)
+    public Render_context(int w, int h)
 	{
 		Window = new Game_window(w, h);
 		Ctx = SDL.SDL_CreateRenderer(Window.Window_handle,
@@ -227,6 +231,52 @@ enum Button_ID
     Quit
 }
 
+public static class Sprites
+{
+    public static dynamic player;
+    public static SDL.SDL_Rect grass;
+    public static SDL.SDL_Rect lava;
+    public static dynamic numbers;
+    public static dynamic button_play;
+    public static dynamic button_quit;
+
+    static Sprites()
+    {
+        player = new System.Dynamic.ExpandoObject();
+        player.Down = new SDL.SDL_Rect  { x = 64 * 0, y = 192, w = 64, h = 64 };
+        player.Up = new SDL.SDL_Rect    { x = 64 * 1, y = 192, w = 64, h = 64 };
+        player.Right = new SDL.SDL_Rect { x = 64 * 2, y = 192, w = 64, h = 64 };
+        player.Left = new SDL.SDL_Rect { x = 64 * 3, y = 192, w = 64, h = 64 };
+
+        grass = new SDL.SDL_Rect    { x = 64,  y = 128, w = 64, h = 64 };
+        lava = new SDL.SDL_Rect     { x = 0,   y = 128, w = 64, h = 64 }; 
+
+        numbers = new System.Dynamic.ExpandoObject();
+        numbers.One = new SDL.SDL_Rect      { x = 64 * 0, y = 64 * 0, w = 64, h = 64 };
+        numbers.Two = new SDL.SDL_Rect      { x = 64 * 1, y = 64 * 0, w = 64, h = 64 };
+        numbers.Three = new SDL.SDL_Rect    { x = 64 * 2, y = 64 * 0, w = 64, h = 64 };
+        numbers.Four = new SDL.SDL_Rect     { x = 64 * 3, y = 64 * 0, w = 64, h = 64 };
+        numbers.Five = new SDL.SDL_Rect     { x = 64 * 4, y = 64 * 0, w = 64, h = 64 };
+        numbers.Six = new SDL.SDL_Rect      { x = 64 * 0, y = 64 * 1, w = 64, h = 64 };
+        numbers.Seven = new SDL.SDL_Rect    { x = 64 * 1, y = 64 * 1, w = 64, h = 64 };
+        numbers.Eight = new SDL.SDL_Rect    { x = 64 * 2, y = 64 * 1, w = 64, h = 64 };
+        numbers.Nine = new SDL.SDL_Rect     { x = 64 * 3, y = 64 * 1, w = 64, h = 64 };
+        numbers.Zero = new SDL.SDL_Rect     { x = 64 * 4, y = 64 * 1, w = 64, h = 64 };
+
+        numbers.X = new SDL.SDL_Rect        { x = 64 * 4, y = 64 * 2, w = 64, h = 64 };
+
+        button_play = new System.Dynamic.ExpandoObject();
+        button_play.Non_active = new SDL.SDL_Rect   { x = 64 * 0, y = 64 * 4, w = 64 * 4, h = 64 * 2 };
+        button_play.Active = new SDL.SDL_Rect       { x = 64 * 4, y = 64 * 4, w = 64 * 4, h = 64 * 2 };
+        button_play.Clicked = new SDL.SDL_Rect      { x = 64 * 8, y = 64 * 4, w = 64 * 4, h = 64 * 2 };
+
+        button_quit = new System.Dynamic.ExpandoObject();
+        button_quit.Non_active = new SDL.SDL_Rect   { x = 64 * 0, y = 64 * 6, w = 64 * 4, h = 64 * 2 };
+        button_quit.Active = new SDL.SDL_Rect       { x = 64 * 4, y = 64 * 6, w = 64 * 4, h = 64 * 2 };
+        button_quit.Clicked = new SDL.SDL_Rect      { x = 64 * 8, y = 64 * 6, w = 64 * 4, h = 64 * 2 };
+    }
+}
+
 public class Game
 {
 	public Game_state State { get; private set; }
@@ -234,18 +284,16 @@ public class Game
     int tile_size;
     bool has_move_key_changed;
 	
-    RenderContext renderer;
+    Render_context renderer;
     int window_size;
 	readonly IntPtr texture_atlas;
-	SDL.SDL_Rect tile_rect;
-	SDL.SDL_Rect texture_rect;
     int render_gameplay_offset;
     Button_ID active_button;
 
 	public Game()
 	{
         window_size = 915;
-		renderer = new RenderContext(window_size, window_size);
+		renderer = new Render_context(window_size, window_size);
 		player = new Player();
         State = new Game_state(15);
         State.Clock.target_fps = 60;
@@ -256,19 +304,17 @@ public class Game
 		Gameplay_setup();
 
 		tile_size = (renderer.Window.Width - render_gameplay_offset) / State.Play_field_size;
-		tile_rect = new SDL.SDL_Rect { w = tile_size, h = tile_size };
-		texture_rect = new SDL.SDL_Rect { w = 64, h = 64 };
     }
     public void Gameplay_setup()
     {
         player.body.x = 7;
         player.body.y = 7;
 
-        State.Reset_field_except_walls();
+        State.Reset_Field_Except_Walls();
         State.game_speed = 1;
         State.run_State = Game_Run_State.Pause;
 
-        State.Spawn_numbers();
+        State.Spawn_Numbers();
         State.expected_product = Get_new_product();
 
         State.active_index = 0;
@@ -286,17 +332,27 @@ public class Game
 
 		// Mouse input
 		uint buttons = SDL.SDL_GetMouseState(out int mouse_x, out int mouse_y);
+        int gameplay_pos_offset = render_gameplay_offset / 2;
+
 		if ((buttons & SDL.SDL_BUTTON_LMASK) != 0)
-		{
-			int tile_x = Get_Tile_Pos(mouse_x);
-			int tile_y = Get_Tile_Pos(mouse_y);
-			State.Play_field[tile_y, tile_x] = Game_Field_Type.Wall;
+		{   
+            if (mouse_x >= gameplay_pos_offset && mouse_x < window_size - gameplay_pos_offset && 
+                mouse_y >= gameplay_pos_offset && mouse_y < window_size - gameplay_pos_offset)
+            {
+                int tile_x = Get_Tile_Logical_Position(mouse_x);
+                int tile_y = Get_Tile_Logical_Position(mouse_y);
+                State.Play_field[tile_y, tile_x] = Game_Field_Type.Wall;
+            }
 		}
 		if ((buttons & SDL.SDL_BUTTON_RMASK) != 0)
 		{
-			int tile_x = Get_Tile_Pos(mouse_x);
-			int tile_y = Get_Tile_Pos(mouse_y);
-            State.Play_field[tile_y, tile_x] = Game_Field_Type.Grass;
+            if (mouse_x >= gameplay_pos_offset && mouse_x < window_size - gameplay_pos_offset && 
+                mouse_y >= gameplay_pos_offset && mouse_y < window_size - gameplay_pos_offset)
+            {
+                int tile_x = Get_Tile_Logical_Position(mouse_x);
+                int tile_y = Get_Tile_Logical_Position(mouse_y);
+                State.Play_field[tile_y, tile_x] = Game_Field_Type.Grass;
+            }
 		}
 
 		// Keyboard input
@@ -416,27 +472,53 @@ public class Game
         }
     }
 
+    private static SDL.SDL_Rect Get_Number_Sprite(int number)
+    {
+        if (number >= 0 && number < 10)
+        {
+            switch (number)
+            {
+                case 1: return Sprites.numbers.One;
+                case 2: return Sprites.numbers.Two;
+                case 3: return Sprites.numbers.Three;
+                case 4: return Sprites.numbers.Four;
+                case 5: return Sprites.numbers.Five;
+                case 6: return Sprites.numbers.Six;
+                case 7: return Sprites.numbers.Seven;
+                case 8: return Sprites.numbers.Eight;
+                case 9: return Sprites.numbers.Nine;
+                case 0: return Sprites.numbers.Zero;
+
+                default:
+                    break;
+            }
+        }
+        else
+        {
+            return Sprites.numbers.X;
+        }
+        return Sprites.numbers.X;
+    }
     public void Render()
 	{
 		SDL.SDL_SetRenderDrawColor(renderer.Ctx, 102, 0, 204, 255);
 		SDL.SDL_RenderClear(renderer.Ctx);
+        var texture_rect = Sprites.grass;
+        var tile_rect = Get_Tile_Rendering_Position(0, 0);
 
         // Grass and wall back-filling
         for (int y = 0; y < State.Play_field_size; y++)
         {
             for (int x = 0; x < State.Play_field_size; x++)
             {
-                tile_rect.x = Get_Render_Pos(x);
-                tile_rect.y = Get_Render_Pos(y);
+                tile_rect = Get_Tile_Rendering_Position(x, y);
 
-                texture_rect.x = 64;
-                texture_rect.y = 128;
+                texture_rect = Sprites.grass;
                 SDL.SDL_RenderCopy(renderer.Ctx, texture_atlas, ref texture_rect, ref tile_rect);
 
                 if (State.Play_field[y, x] == Game_Field_Type.Wall)
                 {
-                    texture_rect.x = 0;
-                    texture_rect.y = 128;
+                    texture_rect = Sprites.lava;
                     SDL.SDL_RenderCopy(renderer.Ctx, texture_atlas, ref texture_rect, ref tile_rect);
                 }
 
@@ -446,102 +528,45 @@ public class Game
         // number render
         foreach (ref Number number in State.numbers.AsSpan())
         {
-            tile_rect.x = Get_Render_Pos(number.x);
-            tile_rect.y = Get_Render_Pos(number.y);
+            tile_rect = Get_Tile_Rendering_Position(number.x, number.y);
 
             if (number.type == Game_Field_Type.Grass)
             {
-                texture_rect.x = 64;
-                texture_rect.y = 128;
+                texture_rect = Sprites.grass;
             }
             else if (number.type == Game_Field_Type.Number)
             {
-                if (number.value == 1)
-                {
-                    texture_rect.x = 64 * 0;
-                    texture_rect.y = 0;
-                }
-                else if (number.value == 2)
-                {
-                    texture_rect.x = 64 * 1;
-                    texture_rect.y = 0;
-                }
-                else if (number.value == 3)
-                {
-                    texture_rect.x = 64 * 2;
-                    texture_rect.y = 0;
-                }
-                else if (number.value == 4)
-                {
-                    texture_rect.x = 64 * 3;
-                    texture_rect.y = 0;
-                }
-                else if (number.value == 5)
-                {
-                    texture_rect.x = 64 * 4;
-                    texture_rect.y = 0;
-                }
-                else if (number.value == 6)
-                {
-                    texture_rect.x = 64 * 0;
-                    texture_rect.y = 64 * 1;
-                }
-                else if (number.value == 7)
-                {
-                    texture_rect.x = 64 * 1;
-                    texture_rect.y = 64 * 1;
-                }
-                else if (number.value == 8)
-                {
-                    texture_rect.x = 64 * 2;
-                    texture_rect.y = 64 * 1;
-                }
-                else if (number.value == 9)
-                {
-                    texture_rect.x = 64 * 3;
-                    texture_rect.y = 64 * 1;
-                }
-                else if (number.value == 0)
-                {
-                    texture_rect.x = 64 * 4;
-                    texture_rect.y = 64 * 1;
-                }
+                texture_rect = Get_Number_Sprite(number.value);
             }
 
             SDL.SDL_RenderCopy(renderer.Ctx, texture_atlas, ref texture_rect, ref tile_rect);
         }
 
         // Player rendering
-        tile_rect.x = Get_Render_Pos((int)player.body.x);
-		tile_rect.y = Get_Render_Pos((int)player.body.y);
+        tile_rect = Get_Tile_Rendering_Position((int)player.body.x, (int)player.body.y);
 
-		Position body_dir = new Position { x = player.vel_x, y = player.vel_y };
+		Tile_position body_dir = new() { x = player.vel_x, y = player.vel_y };
 
-		if ((int)body_dir.x == 1 && (int)body_dir.y == 0)
+		if (body_dir.x == 1 && body_dir.y == 0)
         {
-            texture_rect.x = 64*2;
-            texture_rect.y = 192;
+            texture_rect = Sprites.player.Right;
         }
-        else if ((int)body_dir.x == -1 && (int)body_dir.y == 0)
+        else if (body_dir.x == -1 && body_dir.y == 0)
         {
-            texture_rect.x = 64*3;
-            texture_rect.y = 192;
+            texture_rect = Sprites.player.Left;
         }
-        else if ((int)body_dir.x == 0 && (int)body_dir.y == 1)
+        else if (body_dir.x == 0 && body_dir.y == 1)
         {
-            texture_rect.x = 64*0;
-            texture_rect.y = 192;
+            texture_rect = Sprites.player.Down;
         }
-        else if ((int)body_dir.x == 0 && (int)body_dir.y == -1)
+        else if (body_dir.x == 0 && body_dir.y == -1)
         {
-            texture_rect.x = 64*1;
-            texture_rect.y = 192;
+            texture_rect = Sprites.player.Up;
         }
 		else
         {
-			texture_rect.x = 64*0;
-			texture_rect.y = 192;
-		}
+            texture_rect = Sprites.player.Up;
+        }
         SDL.SDL_RenderCopy(renderer.Ctx, texture_atlas, ref texture_rect, ref tile_rect);
 
         // UI rendering
@@ -561,56 +586,7 @@ public class Game
 
         for (int i = numer_of_digits - 1; i >= 0; i--)
         {
-            if (digits[i] == 1)
-            {
-                texture_rect.x = 64 * 0;
-                texture_rect.y = 0;
-            }
-            else if (digits[i] == 2)
-            {
-                texture_rect.x = 64 * 1;
-                texture_rect.y = 0;
-            }
-            else if (digits[i] == 3)
-            {
-                texture_rect.x = 64 * 2;
-                texture_rect.y = 0;
-            }
-            else if (digits[i] == 4)
-            {
-                texture_rect.x = 64 * 3;
-                texture_rect.y = 0;
-            }
-            else if (digits[i] == 5)
-            {
-                texture_rect.x = 64 * 4;
-                texture_rect.y = 0;
-            }
-            else if (digits[i] == 6)
-            {
-                texture_rect.x = 64 * 0;
-                texture_rect.y = 64 * 1;
-            }
-            else if (digits[i] == 7)
-            {
-                texture_rect.x = 64 * 1;
-                texture_rect.y = 64 * 1;
-            }
-            else if (digits[i] == 8)
-            {
-                texture_rect.x = 64 * 2;
-                texture_rect.y = 64 * 1;
-            }
-            else if (digits[i] == 9)
-            {
-                texture_rect.x = 64 * 3;
-                texture_rect.y = 64 * 1;
-            }
-            else if (digits[i] == 0)
-            {
-                texture_rect.x = 64 * 4;
-                texture_rect.y = 64 * 1;
-            }
+            texture_rect = Get_Number_Sprite(digits[i]);
             SDL.SDL_RenderCopy(renderer.Ctx, texture_atlas, ref texture_rect, ref tile_rect);
             tile_rect.x += 37;
         }
@@ -624,30 +600,29 @@ public class Game
             h = 100
         };
 
-        SDL.SDL_Rect button_texture = new SDL.SDL_Rect { x = 64 * 0, y = 64 * 4, w = 4 * 64, h = 2 * 64 };
-        Button(Button_ID.Quit, button_rect, button_texture);
+        texture_rect = Sprites.button_quit.Non_active;
+        Button(Button_ID.Quit, button_rect, texture_rect);
         if (active_button == Button_ID.Quit)
         {
-            button_texture.x = 64 * 4;
-            Button(Button_ID.Quit, button_rect, button_texture);
-            if (Button(Button_ID.Quit, button_rect, button_texture))
+            texture_rect = Sprites.button_quit.Active;
+            Button(Button_ID.Quit, button_rect, texture_rect);
+            if (Button(Button_ID.Quit, button_rect, texture_rect))
             {
-                button_texture.x = 64 * 8;
-                Button(Button_ID.Quit, button_rect, button_texture);
+                texture_rect = Sprites.button_quit.Clicked;
+                Button(Button_ID.Quit, button_rect, texture_rect);
             }
         }
 
-        button_texture.x = 0;
-        button_texture.y = 64 * 6;
+        texture_rect = Sprites.button_play.Non_active;
         button_rect.x += button_rect.w;
-        Button(Button_ID.Play, button_rect, button_texture);
+        Button(Button_ID.Play, button_rect, texture_rect);
         if (active_button == Button_ID.Play)
         {
-            button_texture.x = 64 * 4;
-            if ( Button(Button_ID.Play, button_rect, button_texture) )
+            texture_rect = Sprites.button_play.Active;
+            if ( Button(Button_ID.Play, button_rect, texture_rect) )
             {
-                button_texture.x = 64 * 8;
-                Button(Button_ID.Play, button_rect, button_texture);
+                texture_rect = Sprites.button_play.Clicked; ;
+                Button(Button_ID.Play, button_rect, texture_rect);
             }
         }
 
@@ -683,15 +658,17 @@ public class Game
 		SDL.SDL_DestroyWindow(renderer.Window.Window_handle);
 		SDL.SDL_Quit();
 	}
-    private int Get_Render_Pos(int dpos)
+    private SDL.SDL_Rect Get_Tile_Rendering_Position(int x, int y)
     {
-        return dpos * tile_size + (render_gameplay_offset / 2);
+        int tile_x = x * tile_size + (render_gameplay_offset / 2);
+        int tile_y = y * tile_size + (render_gameplay_offset / 2);
+
+        return new SDL.SDL_Rect { x = tile_x, y = tile_y, h = tile_size, w = tile_size };
     }
 
-    //TODO: Better out of gameplayfield bounds checking/notification
-    private int Get_Tile_Pos(int pixel_pos)
+    private int Get_Tile_Logical_Position(int pixel_pos)
     {
-        return Math.Clamp( (pixel_pos - render_gameplay_offset / 2) / tile_size, 0, State.Play_field_size - 1);
+        return Math.Clamp((pixel_pos - render_gameplay_offset / 2) / tile_size, 0, State.Play_field_size - 1);
     }
 }
 		
@@ -722,7 +699,7 @@ class Program
 			}
 
 			game.Render();
-			game.State.Clock.clock_update_and_wait(tick_start);
+			game.State.Clock.Clock_Update_And_Wait(tick_start);
 		}
 		game.Terminate_SDL();
 	}
