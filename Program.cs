@@ -6,7 +6,10 @@ public enum Game_Run_State
 	Running,
 	Quit,
 	Pause,
-	Restart
+	Restart,
+    Next_Level,
+    Win,
+    Lose
 };
 public enum Game_Field_Type
 {
@@ -101,6 +104,7 @@ public class Game_state
     public int active_index;
     public int product;
 	public int score;
+    public Player player;
 
     public int Play_field_size { get; private set; }
 	public Random rand;
@@ -109,26 +113,27 @@ public class Game_state
 	{
 		Play_field = new Game_Field_Type[max_play_field_size, max_play_field_size];
 		Play_field_size = max_play_field_size;
+        player = new Player();
+        run_State = Game_Run_State.Pause;
 
-		Clock = new Game_clock();
+        Clock = new Game_clock();
         rand = new Random();
-        numbers = new Number[6];
+        numbers = new Number[12];
         values = new int[2];
     }
 
-    private void Place_on_random_position(ref Number number)
+    private void Place_On_Random_Position(ref Number number)
 	{
-		if (Play_field[number.y, number.x] == Game_Field_Type.Grass)
+		do
 		{
-			do
-			{
-				number.x = rand.Next(0, Play_field_size);
-				number.y = rand.Next(0, Play_field_size);
-			} while (Play_field[number.y, number.x] != Game_Field_Type.Grass);
+			number.x = rand.Next(0, Play_field_size);
+			number.y = rand.Next(0, Play_field_size);
+		} while ( Play_field[number.y, number.x] != Game_Field_Type.Grass ||
+                        ((int)(player.body.x) == number.x &&
+                        (int)(player.body.y) == number.y));
 
-			number.value = rand.Next(1, 10);
-            Play_field[number.y, number.x] = number.type;
-        }
+		number.value = rand.Next(1, 10);
+        Play_field[number.y, number.x] = number.type;
     }
 
 	public void Spawn_Numbers()
@@ -136,7 +141,7 @@ public class Game_state
         foreach (ref Number number in numbers.AsSpan())
         {
             number.type = Game_Field_Type.Number;
-            Place_on_random_position(ref number);
+            Place_On_Random_Position(ref number);
         }
     }
 
@@ -215,7 +220,7 @@ public class Render_context
 			Console.WriteLine($"There was an issue initilizing SDL2_Image {SDL_image.IMG_GetError()}");
 		}
 	}
-	public IntPtr Texture_load(string filename)
+	public IntPtr Texture_Load(string filename)
 	{
 		IntPtr texture;
 		texture = SDL_image.IMG_LoadTexture(Ctx, filename);
@@ -237,8 +242,11 @@ public static class Sprites
     public static SDL.SDL_Rect grass;
     public static SDL.SDL_Rect lava;
     public static dynamic numbers;
-    public static dynamic button_play;
-    public static dynamic button_quit;
+    public static SDL.SDL_Rect[]  button_play;
+    public static SDL.SDL_Rect[] button_quit;
+    public static SDL.SDL_Rect win;
+    public static SDL.SDL_Rect lose;
+    public static SDL.SDL_Rect menu_background;
 
     static Sprites()
     {
@@ -246,7 +254,7 @@ public static class Sprites
         player.Down = new SDL.SDL_Rect  { x = 64 * 0, y = 192, w = 64, h = 64 };
         player.Up = new SDL.SDL_Rect    { x = 64 * 1, y = 192, w = 64, h = 64 };
         player.Right = new SDL.SDL_Rect { x = 64 * 2, y = 192, w = 64, h = 64 };
-        player.Left = new SDL.SDL_Rect { x = 64 * 3, y = 192, w = 64, h = 64 };
+        player.Left = new SDL.SDL_Rect  { x = 64 * 3, y = 192, w = 64, h = 64 };
 
         grass = new SDL.SDL_Rect    { x = 64,  y = 128, w = 64, h = 64 };
         lava = new SDL.SDL_Rect     { x = 0,   y = 128, w = 64, h = 64 }; 
@@ -265,22 +273,25 @@ public static class Sprites
 
         numbers.X = new SDL.SDL_Rect        { x = 64 * 4, y = 64 * 2, w = 64, h = 64 };
 
-        button_play = new System.Dynamic.ExpandoObject();
-        button_play.Non_active = new SDL.SDL_Rect   { x = 64 * 0, y = 64 * 4, w = 64 * 4, h = 64 * 2 };
-        button_play.Active = new SDL.SDL_Rect       { x = 64 * 4, y = 64 * 4, w = 64 * 4, h = 64 * 2 };
-        button_play.Clicked = new SDL.SDL_Rect      { x = 64 * 8, y = 64 * 4, w = 64 * 4, h = 64 * 2 };
+        button_play = new SDL.SDL_Rect[3];
+        button_play[0] = new SDL.SDL_Rect   { x = 64 * 0, y = 64 * 6, w = 64 * 4, h = 64 * 2 };
+        button_play[1] = new SDL.SDL_Rect   { x = 64 * 4, y = 64 * 6, w = 64 * 4, h = 64 * 2 };
+        button_play[2] = new SDL.SDL_Rect   { x = 64 * 8, y = 64 * 6, w = 64 * 4, h = 64 * 2 };
 
-        button_quit = new System.Dynamic.ExpandoObject();
-        button_quit.Non_active = new SDL.SDL_Rect   { x = 64 * 0, y = 64 * 6, w = 64 * 4, h = 64 * 2 };
-        button_quit.Active = new SDL.SDL_Rect       { x = 64 * 4, y = 64 * 6, w = 64 * 4, h = 64 * 2 };
-        button_quit.Clicked = new SDL.SDL_Rect      { x = 64 * 8, y = 64 * 6, w = 64 * 4, h = 64 * 2 };
+        button_quit = new SDL.SDL_Rect[3];
+        button_quit[0] = new SDL.SDL_Rect   { x = 64 * 0, y = 64 * 4, w = 64 * 4, h = 64 * 2 };
+        button_quit[1] = new SDL.SDL_Rect   { x = 64 * 4, y = 64 * 4, w = 64 * 4, h = 64 * 2 };
+        button_quit[2] = new SDL.SDL_Rect   { x = 64 * 8, y = 64 * 4, w = 64 * 4, h = 64 * 2 };
+
+        win = new SDL.SDL_Rect { x = 64 * 0, y = 64 * 8, w = 64 * 11, h = 64 * 3 };
+        lose = new SDL.SDL_Rect { x = 64 * 0, y = 64 * 11, w = 64 * 10, h = 64 * 3 };
+        menu_background = new SDL.SDL_Rect { x = 64 * 0, y = 64 * 14, w = 64 * 10, h = 64 * 10 };
     }
 }
 
 public class Game
 {
 	public Game_state State { get; private set; }
-	Player player;
     int tile_size;
     bool has_move_key_changed;
 	
@@ -294,38 +305,37 @@ public class Game
 	{
         window_size = 915;
 		renderer = new Render_context(window_size, window_size);
-		player = new Player();
         State = new Game_state(15);
         State.Clock.target_fps = 60;
 		has_move_key_changed = false;
         render_gameplay_offset = 128;
-        texture_atlas = renderer.Texture_load("../../../textures/tabliczka_atlas.png");
+        texture_atlas = renderer.Texture_Load("../../../textures/tabliczka_atlas.png");
         active_button = Button_ID.None;
 		Gameplay_setup();
 
 		tile_size = (renderer.Window.Width - render_gameplay_offset) / State.Play_field_size;
     }
-    public void Gameplay_setup()
+    public void Gameplay_setup(bool reset_score = true)
     {
-        player.body.x = 7;
-        player.body.y = 7;
+        State.player.body.x = 7;
+        State.player.body.y = 7;
 
         State.Reset_Field_Except_Walls();
         State.game_speed = 1;
-        State.run_State = Game_Run_State.Pause;
 
         State.Spawn_Numbers();
-        State.expected_product = Get_new_product();
+        State.expected_product = Get_New_Product();
 
         State.active_index = 0;
-        State.score = 0;
+        if(reset_score)
+            State.score = 0;
     }
 
-    public int Get_new_product()
+    public int Get_New_Product()
     {
         return State.numbers[0].value * State.numbers[1].value;
     }
-    public void Input_process()
+    public void Input_Process()
 	{
 		SDL.SDL_Event event_sdl;
 		SDL.SDL_PollEvent(out event_sdl);
@@ -334,10 +344,11 @@ public class Game
 		uint buttons = SDL.SDL_GetMouseState(out int mouse_x, out int mouse_y);
         int gameplay_pos_offset = render_gameplay_offset / 2;
 
-		if ((buttons & SDL.SDL_BUTTON_LMASK) != 0)
+		if ((buttons & SDL.SDL_BUTTON_MMASK) != 0)
 		{   
             if (mouse_x >= gameplay_pos_offset && mouse_x < window_size - gameplay_pos_offset && 
-                mouse_y >= gameplay_pos_offset && mouse_y < window_size - gameplay_pos_offset)
+                mouse_y >= gameplay_pos_offset && mouse_y < window_size - gameplay_pos_offset
+                )
             {
                 int tile_x = Get_Tile_Logical_Position(mouse_x);
                 int tile_y = Get_Tile_Logical_Position(mouse_y);
@@ -369,26 +380,26 @@ public class Game
 				if (event_sdl.key.keysym.sym == SDL.SDL_Keycode.SDLK_UP)
 				{
 					has_move_key_changed = !has_move_key_changed;
-					player.vel_x = 0;
-                    player.vel_y = -1;
+					State.player.vel_x = 0;
+                    State.player.vel_y = -1;
                 }
 				if (event_sdl.key.keysym.sym == SDL.SDL_Keycode.SDLK_DOWN)
 				{
 					has_move_key_changed = !has_move_key_changed;
-					player.vel_x = 0;
-                    player.vel_y = 1;  
+                    State.player.vel_x = 0;
+                    State.player.vel_y = 1;  
                 }
 				if (event_sdl.key.keysym.sym == SDL.SDL_Keycode.SDLK_RIGHT)
 				{
 					has_move_key_changed = !has_move_key_changed;
-					player.vel_x = 1;
-					player.vel_y = 0;	
+                    State.player.vel_x = 1;
+                    State.player.vel_y = 0;	
 				}
 				if (event_sdl.key.keysym.sym == SDL.SDL_Keycode.SDLK_LEFT)
 				{
 					has_move_key_changed = !has_move_key_changed;
-					player.vel_x = -1;
-					player.vel_y = 0;
+                    State.player.vel_x = -1;
+                    State.player.vel_y = 0;
 				}
                 if (event_sdl.key.keysym.sym == SDL.SDL_Keycode.SDLK_p)
                 {
@@ -417,21 +428,27 @@ public class Game
 	{
 		if (has_move_key_changed == true)
 		{
-			player.Move(State.Clock.delta_time_s, State.game_speed);
+            State.player.Move(State.Clock.delta_time_s, State.game_speed);
 			has_move_key_changed = !has_move_key_changed;
 		}
 		
-        int bodyX = (int)player.body.x;
-        int bodyY = (int)player.body.y;
+        int bodyX = (int)State.player.body.x;
+        int bodyY = (int)State.player.body.y;
 
         //kolizja z koncem mapy
         if (bodyX < 0 || bodyX >= State.Play_field_size)
         {
-            State.run_State = Game_Run_State.Restart;
+            if (bodyX < 0)
+                State.player.body.x += State.Play_field_size;
+            else
+                State.player.body.x = bodyX % State.Play_field_size;
         }
         else if (bodyY < 0 || bodyY >= State.Play_field_size)
         {
-            State.run_State = Game_Run_State.Restart;
+            if (bodyY < 0)
+                State.player.body.y += State.Play_field_size;
+            else
+                State.player.body.y = bodyY % State.Play_field_size;
         }
         //kolizja ze scianami
         else if (State.Play_field[bodyY, bodyX] == Game_Field_Type.Wall)
@@ -453,10 +470,12 @@ public class Game
                 if (State.product == State.expected_product)
                 {
                     State.score++;
+                    State.run_State = Game_Run_State.Next_Level;
                 }
                 else
                 {
                     State.score--;
+                    State.run_State = Game_Run_State.Next_Level;
                 }
             }
             State.active_index = (State.active_index + 1) % State.values.Length;
@@ -464,11 +483,11 @@ public class Game
         }
         if (State.score == 10)
         {
-
+            State.run_State = Game_Run_State.Win;
         }
         else if (State.score < 0)
         {
-
+            State.run_State = Game_Run_State.Lose;
         }
     }
 
@@ -543,9 +562,9 @@ public class Game
         }
 
         // Player rendering
-        tile_rect = Get_Tile_Rendering_Position((int)player.body.x, (int)player.body.y);
+        tile_rect = Get_Tile_Rendering_Position((int)State.player.body.x, (int)State.player.body.y);
 
-		Tile_position body_dir = new() { x = player.vel_x, y = player.vel_y };
+		Tile_position body_dir = new() { x = State.player.vel_x, y = State.player.vel_y };
 
 		if (body_dir.x == 1 && body_dir.y == 0)
         {
@@ -569,70 +588,94 @@ public class Game
         }
         SDL.SDL_RenderCopy(renderer.Ctx, texture_atlas, ref texture_rect, ref tile_rect);
 
-        // UI rendering
+        SDL.SDL_Rect number_rect = new() { x = window_size / 2, y = 5, h = tile_size, w = tile_size };
+        Render_Bitmap_Number(State.expected_product, number_rect);
 
-        //expected number render
-        int num = State.expected_product;
-        Span<int> digits = stackalloc int[3];
-        int numer_of_digits = num == 0 ? 1 : (num > 0 ? 1 : 2) + (int)Math.Log10(Math.Abs((double)num));
-        tile_rect.x = window_size / 2 - (numer_of_digits - 1) * (texture_rect.w / 2);
-        tile_rect.y = 5;
-
-        for (int i = 0; i < numer_of_digits; i++)
-        {
-            digits[i] = num % 10;
-            num = num / 10;
-        }
-
-        for (int i = numer_of_digits - 1; i >= 0; i--)
-        {
-            texture_rect = Get_Number_Sprite(digits[i]);
-            SDL.SDL_RenderCopy(renderer.Ctx, texture_atlas, ref texture_rect, ref tile_rect);
-            tile_rect.x += 37;
-        }
+        Render_States();
 
         // Render buttons
         SDL.SDL_Rect button_rect = new SDL.SDL_Rect
         {
-            x = window_size / 2 - texture_rect.w * 4,
+            x = window_size / 2 - 64 * 2,
             y = window_size - 86,
-            w = texture_rect.w * 4,
+            w = 64 * 4,
             h = 100
         };
 
-        texture_rect = Sprites.button_quit.Non_active;
-        Button(Button_ID.Quit, button_rect, texture_rect);
-        if (active_button == Button_ID.Quit)
+        if (State.run_State == Game_Run_State.Pause)
         {
-            texture_rect = Sprites.button_quit.Active;
-            Button(Button_ID.Quit, button_rect, texture_rect);
-            if (Button(Button_ID.Quit, button_rect, texture_rect))
-            {
-                texture_rect = Sprites.button_quit.Clicked;
-                Button(Button_ID.Quit, button_rect, texture_rect);
-            }
+            button_rect.y = (window_size / 2) - (button_rect.h / 2);
         }
 
-        texture_rect = Sprites.button_play.Non_active;
-        button_rect.x += button_rect.w;
-        Button(Button_ID.Play, button_rect, texture_rect);
-        if (active_button == Button_ID.Play)
+        if (Button(Button_ID.Quit, button_rect))
         {
-            texture_rect = Sprites.button_play.Active;
-            if ( Button(Button_ID.Play, button_rect, texture_rect) )
-            {
-                texture_rect = Sprites.button_play.Clicked; ;
-                Button(Button_ID.Play, button_rect, texture_rect);
-            }
+            State.run_State = Game_Run_State.Quit;
+        }
+
+        if (State.run_State == Game_Run_State.Pause)
+        {
+            button_rect.y -= button_rect.h;
+        }
+        else
+            button_rect.x += button_rect.w;
+
+        if (Button(Button_ID.Play, button_rect))
+        {
+            State.run_State = Game_Run_State.Restart;
         }
 
         SDL.SDL_RenderPresent(renderer.Ctx);
 	}
 
-    // Renders button at given tiles, sets status and returns true if clicked
-    private bool Button(Button_ID id, SDL.SDL_Rect rect, SDL.SDL_Rect texture)
+    private void Render_States()
     {
-        SDL.SDL_RenderCopy(renderer.Ctx, texture_atlas, ref texture, ref rect);
+        SDL.SDL_Rect texture_rect = new() { };
+        if (State.run_State == Game_Run_State.Pause)
+        {
+            SDL.SDL_SetRenderDrawColor(renderer.Ctx, 102, 0, 204, 255);
+            SDL.SDL_RenderClear(renderer.Ctx);
+
+            texture_rect = Sprites.menu_background;
+            SDL.SDL_Rect menu_rect = new() { x = window_size / 2 - (texture_rect.w / 2), y = window_size / 2 - texture_rect.h / 2, h = texture_rect.h, w = texture_rect.w };
+            SDL.SDL_RenderCopy(renderer.Ctx, texture_atlas, ref texture_rect, ref menu_rect);
+        }
+        else
+        {
+            if (State.run_State == Game_Run_State.Lose)
+            {
+                texture_rect = Sprites.lose;
+            }
+            if (State.run_State == Game_Run_State.Win)
+            {
+                texture_rect = Sprites.win;
+            }
+
+            SDL.SDL_Rect win_lose_rectangle = new SDL.SDL_Rect
+            {
+                x = window_size / 2 - (texture_rect.w / 2),
+                y = window_size / 2 - (texture_rect.h / 2),
+                w = texture_rect.w,
+                h = texture_rect.h
+            };
+
+            SDL.SDL_RenderCopy(renderer.Ctx, texture_atlas, ref texture_rect, ref win_lose_rectangle);
+            SDL.SDL_Rect number_rect = new() { x = window_size / 6, y = window_size - tile_size - render_gameplay_offset / 12, h = tile_size, w = tile_size };
+            Render_Bitmap_Number(State.score, number_rect);
+        }
+    }
+
+    // Renders button at given tiles, sets status and returns true if clicked
+    private bool Button(Button_ID id, SDL.SDL_Rect rect)
+    {
+        bool status = false;
+        SDL.SDL_Rect texture_rect = new() { };
+        SDL.SDL_Rect[] button_sprites;
+
+        if (id == Button_ID.Play)
+            button_sprites = Sprites.button_play;
+        else
+            button_sprites = Sprites.button_quit;
+
         uint mouse = SDL.SDL_GetMouseState(out int mouse_x, out int mouse_y);
         SDL.SDL_Point cursor = new SDL.SDL_Point { x = mouse_x, y = mouse_y };
    
@@ -640,16 +683,23 @@ public class Game
         {
             // button hilighted
             active_button = id;
-               
+            texture_rect = button_sprites[1];
+
             if ( (mouse & SDL.SDL_BUTTON_LMASK) != 0)
             {
                 // button clicked
-                return true;
+                texture_rect = button_sprites[2];
+                status = true;
             }
         }
         else
+        {
+            texture_rect = button_sprites[0];
             active_button = Button_ID.None;
-        return false;
+        }
+
+        SDL.SDL_RenderCopy(renderer.Ctx, texture_atlas, ref texture_rect, ref rect);
+        return status;
     }
 
 	public void Terminate_SDL()
@@ -670,6 +720,33 @@ public class Game
     {
         return Math.Clamp((pixel_pos - render_gameplay_offset / 2) / tile_size, 0, State.Play_field_size - 1);
     }
+
+    private void Render_Bitmap_Number(int number, SDL.SDL_Rect rect)
+    {
+        if (number >= 0)
+        {
+            int num = number;
+            SDL.SDL_Rect texture_rect = Get_Number_Sprite(1);
+
+            Span<int> digits = stackalloc int[3];
+            int numer_of_digits = num == 0 ? 1 : (num > 0 ? 1 : 2) + (int)Math.Log10(Math.Abs((double)num));
+
+            rect.x -= (numer_of_digits - 1) * (texture_rect.w / 2);
+
+            for (int i = 0; i < numer_of_digits; i++)
+            {
+                digits[i] = num % 10;
+                num = num / 10;
+            }
+
+            for (int i = numer_of_digits - 1; i >= 0; i--)
+            {
+                texture_rect = Get_Number_Sprite(digits[i]);
+                SDL.SDL_RenderCopy(renderer.Ctx, texture_atlas, ref texture_rect, ref rect);
+                rect.x += 37;
+            }
+        }
+    }
 }
 		
 class Program
@@ -679,25 +756,27 @@ class Program
 		Game game = new Game();
 
 		// Main loop for the program
-		while (game.State.run_State == Game_Run_State.Running || game.State.run_State == Game_Run_State.Pause)
+		while (game.State.run_State != Game_Run_State.Quit)
 		{
 			System.UInt64 tick_start = SDL.SDL_GetPerformanceCounter();
 
-			game.Input_process();
+			game.Input_Process();
 
-			if (game.State.run_State == Game_Run_State.Quit)
-			{
-				break;
-			}
-            if (game.State.run_State != Game_Run_State.Pause)
+            if (game.State.run_State == Game_Run_State.Restart)
+            {
+                game.Gameplay_setup();
+                game.State.run_State = Game_Run_State.Running;
+            }
+            if (game.State.run_State == Game_Run_State.Running)
             {
                 game.Update();
             }
-            if (game.State.run_State == Game_Run_State.Restart)
-			{
-				game.Gameplay_setup();
-			}
-
+            if (game.State.run_State == Game_Run_State.Next_Level)
+            {
+                game.Gameplay_setup(false);
+                game.State.run_State = Game_Run_State.Running;
+            }
+          
 			game.Render();
 			game.State.Clock.Clock_Update_And_Wait(tick_start);
 		}

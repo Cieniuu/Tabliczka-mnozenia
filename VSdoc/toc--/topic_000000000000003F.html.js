@@ -1,0 +1,1 @@
+var breadcrumbs=[['-1',"",""],['2',"Tabliczka mnozenia Reference","topic_0000000000000067.html"],['4',"\u003cdefault\u003e Namespace","topic_0000000000000069.html"],['73',"Render_context Class","topic_000000000000003B.html"],['77',"Methods","topic_000000000000003B_methods--.html"],['78',"Texture_Load Method","topic_000000000000003F.html"]];
