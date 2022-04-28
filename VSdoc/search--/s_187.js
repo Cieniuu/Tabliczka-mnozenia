@@ -1,1 +1,0 @@
-search_result['187']=["topic_0000000000000064.html","Game.Render_Bitmap_Number Method",""];

@@ -1,1 +1,0 @@
-search_result['180']=["topic_000000000000005D.html","Game.Get_Number_Sprite Method",""];
